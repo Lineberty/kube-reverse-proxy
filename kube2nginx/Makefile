@@ -5,7 +5,7 @@
 .PHONY: all kube2nginx container push clean test
 
 TAG = 0.1.0
-PREFIX = gcr.io/lineberty
+PREFIX = quay.io/lineberty
 
 all: container
 

@@ -90,7 +90,7 @@ type proxyService struct {
 	RawPath string `json:"path"`
 	HTTP bool
 	HTTPS bool
-	RawTargetPort int
+	RawTargetPort string
 }
 
 func (pService *proxyService) Domain() string {
@@ -107,11 +107,11 @@ func (pService *proxyService) Path() string {
 	return "/"
 }
 
-func (pService *proxyService) TargetPort() int {
-	if pService.RawTargetPort >= 0 {
+func (pService *proxyService) TargetPort() string {
+	if pService.RawTargetPort == "" {
 		return pService.RawTargetPort
 	}
-	return 80
+	return "80"
 }
 
 type proxyEndpoint struct {
@@ -214,11 +214,11 @@ func  (kn *kube2nginx) etcdSyncServiceEndpoints(pService *proxyService, serviceE
 	if resp != nil {
 		proxyEndpoints := resp.Node.Nodes;
 		for _, v := range proxyEndpoints {
-			if serviceEndpoints[v.Value] == nil {
-				glog.V(2).Infof("Removing proxy endpoint %s for service %+v", v.Value, pService)
-				err := kn.etcdRemoveEndpoint(pService, v.Value)
+			if serviceEndpoints[v.Key] == nil {
+				glog.V(2).Infof("Removing proxy endpoint %s for service %+v", v.Key, pService)
+				err := kn.etcdRemoveEndpoint(pService, v.Key)
 				if err != nil {
-					glog.V(2).Infof("Error %s removing proxy endpoint %s for service %+v", err, v.Value, pService)
+					glog.V(2).Infof("Error %s removing proxy endpoint %s for service %+v", err, v.Key, pService)
 				}
 			}
 		}
@@ -268,11 +268,10 @@ func (kn *kube2nginx) syncProxyServiceEndpoints(pService *proxyService, e *kapi.
 			endpointIp := e.Subsets[idx].Addresses[subIdx].IP
 
 			for portIdx := range e.Subsets[idx].Ports {
-				endpointPort := e.Subsets[idx].Ports[portIdx].Port
-				port := strconv.Itoa(endpointPort)
-				if port == pService.TargetPort() {
-					endpoint := proxyEndpoint{Ip: endpointIp, Port: port}
-					endpoints[endpoint.Endpoint()] = &endpoint;
+				endpointPort := strconv.Itoa(e.Subsets[idx].Ports[portIdx].Port)
+				if endpointPort == pService.TargetPort() {
+					endpoint := proxyEndpoint{Ip: endpointIp, Port: endpointPort}
+					endpoints[endpoint.Ip] = &endpoint;
 				}
 			}
 		}
@@ -317,7 +316,7 @@ func (kn *kube2nginx) serviceToProxyService(svc *kapi.Service) *proxyService {
 		} else if "proxyHttps" == k && v == "true" {
 			pService.HTTPS = true
 		} else if "proxyTargetPort" == k {
-			pService.RawTargetPort = strconv.Itoa(v)
+			pService.RawTargetPort = v
 		}
 	}
 
