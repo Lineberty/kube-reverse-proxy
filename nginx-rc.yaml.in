@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: kube-reverse-proxy
+  namespace: system
+  labels:
+    k8s-app: kube-reverse-proxy
+    version: v0.1.0
+    kubernetes.io/cluster-service: "true"
+spec:
+  replicas: 1
+  selector:
+    k8s-app: kube-reverse-proxy
+    version: v0.1.0
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-reverse-proxy
+        version: v0.1.0
+        kubernetes.io/cluster-service: "true"
+    spec:
+      containers:
+      - name: etcd
+        image: gcr.io/google_containers/etcd:2.0.9
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi
+        command:
+        - /usr/local/bin/etcd
+        - -data-dir
+        - /var/etcd/data
+        - -listen-client-urls
+        - http://127.0.0.1:2379,http://127.0.0.1:4001
+        - -advertise-client-urls
+        - http://127.0.0.1:2379,http://127.0.0.1:4001
+        - -initial-cluster-token
+        - skydns-etcd
+        volumeMounts:
+        - name: etcd-storage
+          mountPath: /var/etcd/data
+      - name: kube2nginx
+        image: quay.io/lineberty/kube2nginx
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi
+        args:
+        # command = "/kube2nginx"
+      - name: nginx
+        image: quay.io/lineberty/nginx-confd
+        resources:
+        #  limits:
+        #    cpu: 100m
+        #    memory: 50Mi
+        args:
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        - containerPort: 443
+          name: https
+          protocol: TCP
+      volumes:
+      - name: etcd-storage
+        emptyDir: {}
