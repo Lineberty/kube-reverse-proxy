@@ -2,7 +2,7 @@ FROM debian:jessie
 
 MAINTAINER Lineberty "itadmin@lineberty.com"
 
-COPY ./confd-0.10.0-linux-amd64 /usr/bin/confd
+COPY ./confd-lineberty-linux-amd64 /usr/bin/confd
 COPY ./docker-entrypoint.sh /
 COPY ./confd /etc/confd
 
@@ -23,6 +23,7 @@ RUN rm -r /etc/nginx
 COPY ./nginx /etc/nginx
 
 RUN chmod +x /usr/bin/confd
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80 443
 

@@ -4,8 +4,8 @@
 
 .PHONY: all kube2nginx container push clean test
 
-TAG = 0.1.0
-PREFIX = quay.io/lineberty
+TAG ?= 0.1.0
+PREFIX ?= quay.io/lineberty
 
 all: container
 
@@ -16,7 +16,7 @@ container: kube2nginx
 	docker build -t $(PREFIX)/kube2nginx:$(TAG) .
 
 push:
-	gcloud docker push $(PREFIX)/kube2nginx:$(TAG)
+	docker push $(PREFIX)/kube2nginx:$(TAG)
 
 clean:
 	rm -f kube2nginx

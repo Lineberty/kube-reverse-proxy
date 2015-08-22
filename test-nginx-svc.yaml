@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-nginx
+  labels:
+    app: test-nginx
+  annotations:
+    proxyHttp: "true"
+    path: /
+spec:
+  selector:
+    app: test-nginx
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  type: LoadBalancer

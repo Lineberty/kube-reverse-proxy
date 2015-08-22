@@ -11,10 +11,10 @@ if [ "$1" = 'nginx' ]; then
     fi
 
     cd /usr/share/nginx/html
-    export ETCD_ADVERTISE_CLIENT_URLS=${ETCD_ADVERTISE_CLIENT_URLS:-http://172.17.42.1:4001}
+    export ETCD_ADVERTISE_CLIENT_URLS=${ETCD_ADVERTISE_CLIENT_URLS:-http://127.0.0.1:4001}
 
     echo "confd is now monitoring etcd ($ETCD_ADVERTISE_CLIENT_URLS) for changes ..."
-    confd -node $ETCD_ADVERTISE_CLIENT_URLS &
+    confd -node $ETCD_ADVERTISE_CLIENT_URLS -interval 30 -watch true &
 
     echo "Starting nginx service ..."
     /usr/sbin/nginx -g "daemon off;"

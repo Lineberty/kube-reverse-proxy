@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 	"strconv"
+	"path"
 
 	etcd "github.com/coreos/go-etcd/etcd"
 	"github.com/golang/glog"
@@ -97,7 +98,7 @@ func (pService *proxyService) Domain() string {
 	if pService.RawDomain != "" {
 		return pService.RawDomain
 	}
-	return "_"
+	return "default"
 }
 
 func (pService *proxyService) Path() string {
@@ -108,7 +109,7 @@ func (pService *proxyService) Path() string {
 }
 
 func (pService *proxyService) TargetPort() string {
-	if pService.RawTargetPort == "" {
+	if pService.RawTargetPort != "" {
 		return pService.RawTargetPort
 	}
 	return "80"
@@ -214,11 +215,12 @@ func  (kn *kube2nginx) etcdSyncServiceEndpoints(pService *proxyService, serviceE
 	if resp != nil {
 		proxyEndpoints := resp.Node.Nodes;
 		for _, v := range proxyEndpoints {
-			if serviceEndpoints[v.Key] == nil {
-				glog.V(2).Infof("Removing proxy endpoint %s for service %+v", v.Key, pService)
-				err := kn.etcdRemoveEndpoint(pService, v.Key)
+			key := path.Base(v.Key)
+			if serviceEndpoints[key] == nil {
+				glog.V(2).Infof("Removing proxy endpoint %s for service %+v", key, pService)
+				err := kn.etcdRemoveEndpoint(pService, key)
 				if err != nil {
-					glog.V(2).Infof("Error %s removing proxy endpoint %s for service %+v", err, v.Key, pService)
+					glog.V(2).Infof("Error %s removing proxy endpoint %s for service %+v", err, key, pService)
 				}
 			}
 		}
@@ -264,7 +266,9 @@ func (kn *kube2nginx) addProxyService(pService *proxyService, service *kapi.Serv
 func (kn *kube2nginx) syncProxyServiceEndpoints(pService *proxyService, e *kapi.Endpoints, svc *kapi.Service) error {
 	endpoints := make(map[string]*proxyEndpoint)
 	for idx := range e.Subsets {
+		glog.V(2).Infof("endpoints subsets for service %+v : %+v e", pService, e.Subsets)
 		for subIdx := range e.Subsets[idx].Addresses {
+			glog.V(2).Infof("endpoints addresses for service %+v : %+v e", pService, e.Subsets[idx].Addresses)
 			endpointIp := e.Subsets[idx].Addresses[subIdx].IP
 
 			for portIdx := range e.Subsets[idx].Ports {

@@ -1,9 +1,12 @@
 {{range $service := lsdir "/proxy/services"}}
-	upstream {{ base $service }} {
-		{{$endpoints := printf "/proxy/services/%s/endpoints/*" $service}} {{ range gets $endpoints}}
-			server {{ printf "%s:%s" .Key .Value}};
-		{{end}} 
-	}
+	{{$endpointsKey := printf "/proxy/services/%s/endpoints/*" $service}} {{ $endpoints := gets $endpointsKey}}
+	{{ if gt ( len ( $endpoints ) ) 0 }}
+		upstream {{ base $service }} {
+			{{ range $endpoints}}
+				server {{ printf "%s:%s" (base .Key) .Value}};
+			{{end}}
+		}
+	{{end}}
 {{end}}
 
 
@@ -12,17 +15,25 @@
 	{{ if gt ( len ( $httpServices ) ) 0 }}
 		server {
 			listen 80;
-    		server_name  {{ $domain }};
+
+			{{ if eq $domain "default" }}
+    			server_name _;
+    		{{ else }}
+    			server_name {{ $domain }};
+    		{{end}}
 
 			{{range $service := $httpServices}}
-				location {{ getv (printf "/proxy/services/%s/path" $service) }}  {
-        			proxy_pass        http://{{ $service }};
-        			proxy_redirect    off;
-        			proxy_set_header  Host              $host;
-        			proxy_set_header  X-Real-IP         $remote_addr;
-        			proxy_set_header  X-Forwarded-Proto $scheme;
-        			proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
-   				}
+				{{$endpointsKey := printf "/proxy/services/%s/endpoints/*" $service}} {{ $endpoints := gets $endpointsKey}}
+                	{{ if gt ( len ( $endpoints ) ) 0 }}
+                		location {{ getv (printf "/proxy/services/%s/path" $service) }}  {
+                        	proxy_pass        http://{{ $service }};
+                            proxy_redirect    off;
+                            proxy_set_header  Host              $host;
+                            proxy_set_header  X-Real-IP         $remote_addr;
+                            proxy_set_header  X-Forwarded-Proto $scheme;
+                            proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
+                        }
+                	{{end}}
 			{{end}}
 	}
 	{{ end }}
@@ -31,7 +42,11 @@
 	{{ if gt ( len ( $httpsServices ) ) 0 }}
 		server {
 			listen 443;
-    		server_name  {{ $domain }};
+    		{{ if eq $domain "default" }}
+            	server_name _;
+            {{ else }}
+            	server_name {{ $domain }};
+            {{end}}
     		
     		ssl_certificate           /etc/secret/{{ $domain }}.crt;
     		ssl_certificate_key       /etc/nginx/{{ $domain }}.key;
@@ -42,16 +57,19 @@
     		ssl_ciphers HIGH:!aNULL:!eNULL:!EXPORT:!CAMELLIA:!DES:!MD5:!PSK:!RC4;
     		ssl_prefer_server_ciphers on;
 
-			{{range $service := $httpsServices}}
-				location {{ getv (printf "/proxy/services/%s/path" $service) }}  {
-        			proxy_pass        http://{{ $service }};
-        			proxy_redirect    off;
-        			proxy_set_header  Host              $host;
-        			proxy_set_header  X-Real-IP         $remote_addr;
-        			proxy_set_header  X-Forwarded-Proto $scheme;
-        			proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
-   				}
-			{{end}}
-	}
+			{{range $service := $httpServices}}
+            	{{$endpointsKey := printf "/proxy/services/%s/endpoints/*" $service}} {{ $endpoints := gets $endpointsKey}}
+                {{ if gt ( len ( $endpoints ) ) 0 }}
+                	location {{ getv (printf "/proxy/services/%s/path" $service) }}  {
+                    	proxy_pass        http://{{ $service }};
+                        proxy_redirect    off;
+                        proxy_set_header  Host              $host;
+                        proxy_set_header  X-Real-IP         $remote_addr;
+                        proxy_set_header  X-Forwarded-Proto $scheme;
+                        proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
+                    }
+                {{end}}
+            {{end}}
+		}
 	{{ end }}
 {{end}}
